@@ -65,6 +65,7 @@ func TestCafeCount(t *testing.T) {
 		{1, 1},
 		{2, 2},
 		{100, total},
+		{count: -1, want: 0},
 	}
 
 	for _, r := range requests {
@@ -87,44 +88,42 @@ func TestCafeCount(t *testing.T) {
 	}
 }
 
-func TestCafeSearc(t *testing.T) {
-
+func TestCafeSearch(t *testing.T) {
 	handler := http.HandlerFunc(mainHandle)
 	city := "moscow"
 
-	requests := []struct {
+	tests := []struct {
 		search    string
 		wantCount int
 	}{
-		{"фасоль", 0},
-		{"кофе", 2},
-		{"вилка", 1},
+		{"фасоль", 0},     // ничего не найдёт
+		{"кофе", 2},       // частичное совпадение
+		{"вилка", 1},      // точное совпадение
+		{"КОФЕ", 2},       // проверка на регистр
+		{"", len(cafeList[city])}, // без параметра поиска — вернуть всё
 	}
 
-	for _, r := range requests {
-		url := fmt.Sprintf("/cafe?city=%s&search=%s", city, r.search)
+	for _, tt := range tests {
+		url := fmt.Sprintf("/cafe?city=%s&search=%s", city, tt.search)
 		req := httptest.NewRequest("GET", url, nil)
 		resp := httptest.NewRecorder()
 
 		handler.ServeHTTP(resp, req)
 
-		require.Equal(t, http.StatusOK, resp)
+		require.Equal(t, http.StatusOK, resp.Code)
 
 		body := resp.Body.String()
-
-		var cafe []string
+		var cafes []string
 		if strings.TrimSpace(body) != "" {
-			cafe = strings.Split(body, ",")
+			cafes = strings.Split(body, ",")
 		}
 
-		assert.Equal(t, r.wantCount, len(cafe))
+		assert.Equal(t, tt.wantCount, len(cafes))
 
-		for _, name := range cafe {
-			nameLower := strings.ToLower(name)
-			searchLower := strings.ToLower(r.search)
-
-			assert.Contains(t, nameLower, searchLower)
+		if tt.search != "" {
+			for _, name := range cafes {
+				assert.Contains(t, strings.ToLower(name), strings.ToLower(tt.search))
+			}
 		}
-
 	}
 }
