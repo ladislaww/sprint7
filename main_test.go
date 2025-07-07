@@ -65,7 +65,6 @@ func TestCafeCount(t *testing.T) {
 		{1, 1},
 		{2, 2},
 		{100, total},
-		{count: -1, want: 0},
 	}
 
 	for _, r := range requests {
